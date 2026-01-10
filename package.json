@@ -1,0 +1,9 @@
+{
+  "name": "kitchen-alchemy",
+  "version": "1.0.0",
+  "description": "AI-powered recipe finder",
+  "dependencies": {
+    "node-fetch": "^2.7.0",
+    "stripe": "^14.10.0"
+  }
+}
