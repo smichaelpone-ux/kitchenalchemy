@@ -4,6 +4,7 @@
   "description": "AI-powered recipe finder",
   "dependencies": {
     "node-fetch": "^2.7.0",
-    "stripe": "^14.10.0"
+    "stripe": "^14.10.0",
+    "firebase-admin": "^12.0.0"
   }
 }
