@@ -1,0 +1,3182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kitchen Alchemy - AI Recipe Finder</title>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #FFF8F0 0%, #FFE8D6 50%, #FFF0E1 100%);
+            font-family: 'Crimson Pro', Georgia, serif;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 10px 5px;
+            }
+        }
+
+        .header {
+            max-width: 900px;
+            margin: 0 auto;
+            padding-top: 40px;
+            padding-bottom: 30px;
+            text-align: center;
+        }
+
+        @media (max-width: 600px) {
+            .header {
+                padding-top: 20px;
+                padding-bottom: 20px;
+            }
+        }
+
+        .header.hidden {
+            display: none;
+        }
+
+        .auth-nav {
+            position: absolute;
+            top: 40px;
+            left: 20px;
+            z-index: 10;
+        }
+
+        @media (max-width: 600px) {
+            .auth-nav {
+                top: 20px;
+                left: 10px;
+            }
+        }
+
+        .library-nav {
+            position: absolute;
+            top: 40px;
+            right: 20px;
+            z-index: 10;
+        }
+
+        @media (max-width: 600px) {
+            .library-nav {
+                top: 20px;
+                right: 10px;
+            }
+        }
+
+        .btn-auth {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid #E67E22;
+            border-radius: 12px;
+            color: #D35400;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 180px;
+            justify-content: center;
+        }
+
+        .btn-auth:hover {
+            background: #E67E22;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(230, 126, 34, 0.3);
+        }
+
+        .btn-auth.premium {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+            border-color: #27ae60;
+            color: white;
+        }
+
+        .btn-auth.premium:hover {
+            background: linear-gradient(135deg, #229954 0%, #1e8449 100%);
+        }
+
+        @media (max-width: 600px) {
+            .btn-auth {
+                padding: 8px 14px;
+                font-size: 0.85rem;
+                min-width: 150px;
+            }
+            
+            .btn-auth svg {
+                width: 16px;
+                height: 16px;
+            }
+        }
+
+        .credits-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .upgrade-link {
+            background: linear-gradient(135deg, #E67E22 0%, #D35400 100%);
+            color: white;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+            padding: 4px 12px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+
+        .upgrade-link:hover {
+            background: linear-gradient(135deg, #D35400 0%, #C0451F 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(230, 126, 34, 0.3);
+        }
+
+        .credits-divider {
+            color: #E67E22;
+            opacity: 0.5;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid #E67E22;
+        }
+
+        .btn-upgrade-home {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+        }
+
+        .btn-upgrade-home:hover {
+            background: linear-gradient(135deg, #229954 0%, #1e8449 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
+        }
+
+        @media (max-width: 600px) {
+            .btn-upgrade-home {
+                padding: 10px 20px;
+                font-size: 0.9rem;
+            }
+        }
+
+        .user-menu {
+            position: absolute;
+            top: 60px;
+            left: 0;
+            background: white;
+            border: 2px solid #E67E22;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            padding: 8px 0;
+            min-width: 180px;
+            display: none;
+            z-index: 100;
+        }
+
+        .user-menu.active {
+            display: block;
+            animation: fadeSlideDown 0.2s ease-out;
+        }
+
+        @keyframes fadeSlideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .user-menu-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 0.95rem;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-menu-item:hover {
+            background: #FFF8F0;
+        }
+
+        .user-menu-divider {
+            height: 1px;
+            background: #FFE8D6;
+            margin: 8px 0;
+        }
+
+        .credits-badge {
+            background: rgba(230, 126, 34, 0.1);
+            border: 2px solid #E67E22;
+            border-radius: 8px;
+            padding: 4px 10px;
+            font-size: 0.85rem;
+            color: #D35400;
+            font-weight: 600;
+        }
+
+        .premium-badge {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+            border: none;
+            color: white;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 24px;
+            padding: 40px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: modalSlideUp 0.3s ease-out;
+            position: relative;
+        }
+
+        @keyframes modalSlideUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 600px) {
+            .modal-content {
+                padding: 30px 20px;
+            }
+        }
+
+        .modal-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .modal-header h2 {
+            font-size: 2rem;
+            color: #D35400;
+            margin-bottom: 10px;
+        }
+
+        .modal-header p {
+            font-size: 1.1rem;
+            color: #8B4513;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(0, 0, 0, 0.05);
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+
+        .modal-close:hover {
+            background: rgba(0, 0, 0, 0.1);
+            color: #333;
+            transform: scale(1.1);
+        }
+
+        .btn-google-signin {
+            width: 100%;
+            padding: 14px 24px;
+            background: white;
+            border: 2px solid #E0E0E0;
+            border-radius: 12px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .btn-google-signin:hover {
+            background: #f8f8f8;
+            border-color: #E67E22;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-upgrade {
+            width: 100%;
+            padding: 16px 24px;
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            margin-top: 20px;
+        }
+
+        .btn-upgrade:hover {
+            background: linear-gradient(135deg, #229954 0%, #1e8449 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
+        }
+
+        .pricing-features {
+            list-style: none;
+            margin: 20px 0;
+        }
+
+        .pricing-features li {
+            padding: 12px 0;
+            border-bottom: 1px solid #FFE8D6;
+            font-size: 1.05rem;
+            color: #8B4513;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .pricing-features li:last-child {
+            border-bottom: none;
+        }
+
+        .feature-check {
+            color: #27ae60;
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+
+        .limit-warning {
+            background: rgba(231, 76, 60, 0.1);
+            border: 2px solid #e74c3c;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .limit-warning p {
+            color: #c0392b;
+            font-weight: 600;
+            font-size: 1.05rem;
+            margin: 0;
+        }
+
+        .btn-library {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #E67E22 0%, #D35400 100%);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 180px;
+            justify-content: center;
+        }
+
+        .btn-library:hover {
+            background: linear-gradient(135deg, #D35400 0%, #C0451F 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(230, 126, 34, 0.4);
+        }
+
+        @media (max-width: 600px) {
+            .btn-library {
+                padding: 8px 14px;
+                font-size: 0.85rem;
+                min-width: 150px;
+            }
+            
+            .btn-library svg {
+                width: 16px;
+                height: 16px;
+            }
+        }
+
+        .btn-save-recipe {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px solid #E67E22;
+            border-radius: 12px;
+            color: #D35400;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            margin-bottom: 16px;
+            width: 100%;
+        }
+
+        .btn-save-recipe:hover {
+            background: #E67E22;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(230, 126, 34, 0.3);
+        }
+
+        .btn-save-recipe.saved {
+            background: #27ae60;
+            border-color: #27ae60;
+            color: white;
+        }
+
+        .btn-save-recipe.saved:hover {
+            background: #229954;
+            border-color: #229954;
+        }
+
+        @media (max-width: 600px) {
+            .btn-save-recipe {
+                padding: 10px 20px;
+                font-size: 0.9rem;
+            }
+        }
+
+        .library-container {
+            display: none;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .library-container.active {
+            display: block;
+        }
+
+        @media (max-width: 600px) {
+            .library-container {
+                padding: 10px 5px;
+            }
+        }
+
+        .library-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding: 0 5px;
+        }
+
+        .library-header h2 {
+            font-size: 2rem;
+            color: #D35400;
+            margin: 0;
+            font-weight: 700;
+        }
+
+        .library-count {
+            font-size: 1rem;
+            color: #8B4513;
+            font-weight: 500;
+        }
+
+        @media (max-width: 600px) {
+            .library-header h2 {
+                font-size: 1.5rem;
+            }
+            
+            .library-count {
+                font-size: 0.9rem;
+            }
+        }
+
+        .library-grid {
+            display: grid;
+            gap: 16px;
+        }
+
+        .library-recipe-card {
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px solid #FFE8D6;
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .library-recipe-card:hover {
+            border-color: #E67E22;
+            box-shadow: 0 4px 12px rgba(230, 126, 34, 0.2);
+        }
+
+        .library-recipe-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            background: linear-gradient(135deg, #FFF8F0 0%, #FFE8D6 100%);
+        }
+
+        .library-recipe-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #D35400;
+            margin: 0;
+            flex: 1;
+        }
+
+        .library-recipe-remove {
+            background: rgba(231, 76, 60, 0.1);
+            border: none;
+            color: #e74c3c;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: 700;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+            margin-left: 12px;
+        }
+
+        .library-recipe-remove:hover {
+            background: #e74c3c;
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .library-recipe-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease;
+        }
+
+        .library-recipe-card.expanded .library-recipe-content {
+            max-height: 2000px;
+        }
+
+        .library-recipe-details {
+            padding: 20px;
+        }
+
+        .library-recipe-meta {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 16px;
+            font-size: 0.9rem;
+            color: #8B4513;
+        }
+
+        .library-recipe-instructions {
+            margin-top: 16px;
+        }
+
+        .library-recipe-instructions h4 {
+            font-size: 1rem;
+            color: #D35400;
+            margin-bottom: 8px;
+        }
+
+        .library-recipe-instructions ol {
+            padding-left: 20px;
+            margin: 0;
+        }
+
+        .library-recipe-instructions li {
+            margin-bottom: 8px;
+            color: #8B4513;
+            line-height: 1.6;
+        }
+
+        @media (max-width: 600px) {
+            .library-recipe-header {
+                padding: 12px 16px;
+            }
+
+            .library-recipe-title {
+                font-size: 1rem;
+            }
+
+            .library-recipe-details {
+                padding: 16px;
+            }
+        }
+
+
+        .library-empty {
+            text-align: center;
+            padding: 60px 20px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 24px;
+            border: 2px dashed #FFD7B5;
+        }
+
+        .library-empty-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+
+        .library-empty h3 {
+            font-size: 1.5rem;
+            color: #D35400;
+            margin-bottom: 12px;
+        }
+
+        .library-empty p {
+            font-size: 1.1rem;
+            color: #8B4513;
+            margin-bottom: 0;
+        }
+
+        @media (max-width: 600px) {
+            .library-empty {
+                padding: 40px 20px;
+            }
+            
+            .library-empty-icon {
+                font-size: 3rem;
+            }
+            
+            .library-empty h3 {
+                font-size: 1.2rem;
+            }
+            
+            .library-empty p {
+                font-size: 1rem;
+            }
+        }
+
+        .btn-remove-recipe {
+            padding: 8px 16px;
+            background: rgba(231, 76, 60, 0.1);
+            border: 2px solid #e74c3c;
+            border-radius: 8px;
+            color: #c0392b;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-remove-recipe:hover {
+            background: #e74c3c;
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .recipe-actions {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        @media (max-width: 600px) {
+            .recipe-actions {
+                flex-direction: column;
+            }
+            
+            .btn-remove-recipe {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        .logo-container {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 80px;
+            margin-bottom: 16px;
+            animation: fadeSlideDown 0.8s ease-out;
+        }
+
+        @media (max-width: 600px) {
+            .logo-container {
+                margin-top: 60px;
+            }
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            color: #D35400;
+        }
+
+        h1 {
+            font-size: clamp(2.5rem, 8vw, 4rem);
+            font-weight: 700;
+            margin: 0;
+            background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            font-size: clamp(1.1rem, 3vw, 1.3rem);
+            color: #8B4513;
+            font-weight: 400;
+            margin: 0;
+            opacity: 0;
+            animation: fadeIn 0.8s ease-out 0.3s forwards;
+        }
+
+        .ai-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #E67E22 0%, #D35400 100%);
+            color: white;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-top: 12px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            overflow-x: hidden;
+        }
+
+        .input-card {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 24px;
+            padding: 32px;
+            box-shadow: 0 10px 40px rgba(211, 84, 0, 0.15);
+            margin-bottom: 32px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(211, 84, 0, 0.1);
+            opacity: 0;
+            animation: fadeSlideUp 0.6s ease-out 0.4s forwards;
+        }
+
+        .input-card h2 {
+            font-size: 1.5rem;
+            color: #D35400;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        #ingredientInput {
+            flex: 1;
+            padding: 14px 20px;
+            font-size: 1.05rem;
+            border: 2px solid #FFD7B5;
+            border-radius: 12px;
+            outline: none;
+            font-family: inherit;
+            background: #FFFBF7;
+            transition: all 0.3s ease;
+        }
+
+        #ingredientInput:focus {
+            border-color: #E67E22;
+            box-shadow: 0 0 0 3px rgba(230, 126, 34, 0.1);
+        }
+
+        .btn-add {
+            padding: 14px 24px;
+            background: linear-gradient(135deg, #E67E22 0%, #D35400 100%);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 4px 12px rgba(211, 84, 0, 0.3);
+            font-family: inherit;
+        }
+
+        .btn-add:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(211, 84, 0, 0.4);
+        }
+
+        .btn-camera {
+            padding: 14px 20px;
+            background: linear-gradient(135deg, #16a085 0%, #138d75 100%);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 4px 12px rgba(22, 160, 133, 0.3);
+            font-family: inherit;
+        }
+
+        .btn-camera:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(22, 160, 133, 0.4);
+        }
+
+        .btn-camera:disabled {
+            background: linear-gradient(135deg, #D5D8DC 0%, #BDC3C7 100%);
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        @media (max-width: 600px) {
+            .input-group {
+                flex-wrap: wrap;
+            }
+            
+            .btn-camera {
+                flex: 1;
+                min-width: 140px;
+                justify-content: center;
+            }
+        }
+
+        #cameraInput {
+            display: none;
+        }
+
+        .ingredients-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+            min-height: 20px;
+        }
+
+        .ingredient-tag {
+            background: linear-gradient(135deg, #FFF4E6 0%, #FFE8D6 100%);
+            padding: 10px 16px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1rem;
+            color: #8B4513;
+            border: 1.5px solid #FFD7B5;
+            animation: popIn 0.3s ease-out backwards;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .ingredient-tag:hover {
+            transform: scale(1.05);
+            background: linear-gradient(135deg, #FFE8D6 0%, #FFD7B5 100%);
+            border-color: #E67E22;
+        }
+
+        .ingredient-tag:active {
+            transform: scale(0.98);
+        }
+
+        .ingredient-tag span {
+            font-weight: 500;
+        }
+
+        .quick-select-section {
+            margin-bottom: 20px;
+        }
+
+        .quick-select-section h3 {
+            font-size: 1rem;
+            color: #A04000;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .quick-select-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .quick-select-btn {
+            background: linear-gradient(135deg, #FFFBF7 0%, #FFF4E6 100%);
+            border: 1.5px solid #FFD7B5;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.95rem;
+            color: #8B4513;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            font-weight: 500;
+        }
+
+        .quick-select-btn:hover {
+            background: linear-gradient(135deg, #FFE8D6 0%, #FFD7B5 100%);
+            border-color: #E67E22;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(211, 84, 0, 0.15);
+        }
+
+        .quick-select-btn:active {
+            transform: translateY(0);
+        }
+
+        .quick-select-btn.added {
+            background: linear-gradient(135deg, #D4EDDA 0%, #C3E6CB 100%);
+            border-color: #28A745;
+            color: #155724;
+        }
+
+        .btn-remove {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 2px;
+            display: flex;
+            align-items: center;
+            color: #D35400;
+            transition: transform 0.2s ease;
+        }
+
+        .btn-remove:hover {
+            transform: rotate(90deg);
+        }
+
+        .error-message {
+            color: #C0392B;
+            font-size: 0.95rem;
+            margin-bottom: 16px;
+            padding: 12px;
+            background: #FADBD8;
+            border-radius: 8px;
+            border: 1px solid #F1948A;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .btn-find-recipes {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #D35400 0%, #A04000 100%);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 1.15rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 6px 20px rgba(160, 64, 0, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-family: inherit;
+        }
+
+        .btn-find-recipes:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(160, 64, 0, 0.5);
+        }
+
+        .btn-find-recipes:disabled {
+            background: #D5D8DC;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .recipes-grid {
+            display: grid;
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .recipe-carousel-container {
+            display: none;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .recipe-carousel-container.active {
+            display: block;
+        }
+
+        @media (max-width: 600px) {
+            .recipe-carousel-container {
+                padding: 10px 5px;
+            }
+
+            .carousel-header {
+                margin-bottom: 16px;
+                padding: 0 5px;
+            }
+        }
+
+        .carousel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .btn-start-over {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid #E67E22;
+            border-radius: 12px;
+            color: #D35400;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        @media (max-width: 600px) {
+            .btn-start-over {
+                padding: 10px 16px;
+                font-size: 0.9rem;
+                gap: 6px;
+            }
+            
+            .btn-start-over svg {
+                width: 16px;
+                height: 16px;
+            }
+        }
+
+        .btn-start-over:hover {
+            background: #E67E22;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(230, 126, 34, 0.3);
+        }
+
+        .recipe-counter {
+            font-size: 1.1rem;
+            color: #8B4513;
+            font-weight: 600;
+        }
+
+        @media (max-width: 600px) {
+            .recipe-counter {
+                font-size: 0.95rem;
+            }
+        }
+
+        .carousel-wrapper {
+            position: relative;
+            overflow: hidden;
+            border-radius: 24px;
+            width: 100%;
+            max-width: 100%;
+        }
+
+        @media (max-width: 600px) {
+            .carousel-wrapper {
+                border-radius: 16px;
+            }
+        }
+
+        .carousel-track {
+            display: flex;
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            width: 100%;
+        }
+
+        .carousel-slide {
+            min-width: 100%;
+            max-width: 100%;
+            width: 100%;
+            flex-shrink: 0;
+            flex-grow: 0;
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+            box-sizing: border-box;
+            padding: 0;
+        }
+
+        @media (max-width: 600px) {
+            .carousel-slide {
+                max-height: calc(100vh - 120px);
+            }
+        }
+
+        /* Custom scrollbar for carousel slides */
+        .carousel-slide::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .carousel-slide::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .carousel-slide::-webkit-scrollbar-thumb {
+            background: #E67E22;
+            border-radius: 3px;
+        }
+
+        .carousel-slide::-webkit-scrollbar-thumb:hover {
+            background: #D35400;
+        }
+
+        .carousel-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px solid #E67E22;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+        @media (max-width: 600px) {
+            .carousel-nav {
+                width: 40px;
+                height: 40px;
+            }
+            
+            .carousel-nav svg {
+                width: 18px;
+                height: 18px;
+            }
+        }
+
+        .carousel-nav:hover {
+            background: #E67E22;
+            color: white;
+            transform: translateY(-50%) scale(1.1);
+            box-shadow: 0 4px 12px rgba(230, 126, 34, 0.4);
+        }
+
+        .carousel-nav.prev {
+            left: -25px;
+        }
+
+        .carousel-nav.next {
+            right: -25px;
+        }
+
+        @media (max-width: 600px) {
+            .carousel-nav.prev {
+                left: -10px;
+            }
+            
+            .carousel-nav.next {
+                right: -10px;
+            }
+        }
+
+        .carousel-nav:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .carousel-nav:disabled:hover {
+            background: rgba(255, 255, 255, 0.95);
+            color: inherit;
+            transform: translateY(-50%) scale(1);
+        }
+
+        .carousel-indicators {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 24px;
+        }
+
+        @media (max-width: 600px) {
+            .carousel-indicators {
+                margin-top: 16px;
+                gap: 8px;
+            }
+        }
+
+        .indicator-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #FFD7B5;
+            border: 2px solid #E67E22;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        @media (max-width: 600px) {
+            .indicator-dot {
+                width: 10px;
+                height: 10px;
+            }
+        }
+
+        .indicator-dot.active {
+            background: #E67E22;
+            transform: scale(1.3);
+        }
+
+        .indicator-dot:hover {
+            background: #E67E22;
+        }
+
+        @media (max-width: 600px) {
+            .carousel-nav.prev {
+                left: -15px;
+            }
+            
+            .carousel-nav.next {
+                right: -15px;
+            }
+        }
+
+        .recipe-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 32px;
+            box-shadow: 0 8px 30px rgba(139, 69, 19, 0.15);
+            border: 1px solid rgba(230, 126, 34, 0.15);
+            opacity: 0;
+            animation: fadeSlideUp 0.6s ease-out forwards;
+            width: 100%;
+            box-sizing: border-box;
+            margin: 0;
+        }
+
+        @media (max-width: 600px) {
+            .recipe-card {
+                padding: 20px;
+                border-radius: 16px;
+            }
+        }
+
+        .recipe-card h3 {
+            font-size: 2rem;
+            color: #D35400;
+            margin-bottom: 16px;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        @media (max-width: 600px) {
+            .recipe-card h3 {
+                font-size: 1.5rem;
+                margin-bottom: 12px;
+            }
+        }
+
+        .video-button-container {
+            margin-bottom: 16px;
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            padding-bottom: 56.25%; /* 16:9 aspect ratio */
+            margin-bottom: 20px;
+            border-radius: 16px;
+            overflow: hidden;
+            background: #000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        @media (max-width: 600px) {
+            .video-container {
+                margin-bottom: 16px;
+                border-radius: 12px;
+            }
+        }
+
+        .video-iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .video-placeholder {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            background-size: cover;
+            background-position: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .video-placeholder::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            transition: background 0.3s ease;
+            z-index: 1;
+        }
+
+        .video-placeholder:hover::before {
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .video-placeholder.hidden {
+            display: none;
+        }
+
+        .play-button {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 0, 0, 0.9);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+            transition: transform 0.3s ease, background 0.3s ease;
+            position: relative;
+            z-index: 2;
+        }
+
+        .video-placeholder:hover .play-button {
+            transform: scale(1.1);
+            background: rgba(255, 0, 0, 1);
+        }
+
+        .play-button svg {
+            width: 32px;
+            height: 32px;
+            margin-left: 6px;
+        }
+
+        .video-label {
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-align: center;
+            padding: 0 20px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+            position: relative;
+            z-index: 2;
+        }
+
+        @media (max-width: 600px) {
+            .play-button {
+                width: 60px;
+                height: 60px;
+            }
+
+            .play-button svg {
+                width: 24px;
+                height: 24px;
+            }
+
+            .video-label {
+                font-size: 0.95rem;
+            }
+        }
+
+        .btn-watch-video {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #FF0000 0%, #CC0000 100%);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            box-shadow: 0 4px 12px rgba(255, 0, 0, 0.3);
+            font-family: inherit;
+        }
+
+        .btn-watch-video:hover {
+            background: linear-gradient(135deg, #CC0000 0%, #990000 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(255, 0, 0, 0.4);
+        }
+
+        .btn-watch-video svg {
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 600px) {
+            .btn-watch-video {
+                font-size: 0.9rem;
+                padding: 10px 20px;
+                gap: 8px;
+            }
+        }
+
+        .recipe-meta {
+            display: flex;
+            gap: 24px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        @media (max-width: 600px) {
+            .recipe-meta {
+                gap: 16px;
+                margin-bottom: 20px;
+            }
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #8B4513;
+            font-size: 1rem;
+        }
+
+        @media (max-width: 600px) {
+            .meta-item {
+                font-size: 0.9rem;
+            }
+            
+            .meta-item svg {
+                width: 16px;
+                height: 16px;
+            }
+        }
+
+        .additional-ingredients {
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 600px) {
+            .additional-ingredients {
+                margin-bottom: 20px;
+            }
+        }
+
+        .additional-ingredients h4 {
+            font-size: 1.1rem;
+            color: #A04000;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        @media (max-width: 600px) {
+            .additional-ingredients h4 {
+                font-size: 1rem;
+                margin-bottom: 10px;
+            }
+        }
+
+        .additional-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .additional-item {
+            background: #FFF8F0;
+            padding: 6px 14px;
+            border-radius: 16px;
+            font-size: 0.95rem;
+            color: #8B4513;
+            border: 1px solid #FFE8D6;
+        }
+
+        @media (max-width: 600px) {
+            .additional-item {
+                font-size: 0.85rem;
+                padding: 5px 12px;
+            }
+        }
+
+        .instructions h4 {
+            font-size: 1.1rem;
+            color: #A04000;
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+
+        @media (max-width: 600px) {
+            .instructions h4 {
+                font-size: 1rem;
+                margin-bottom: 12px;
+            }
+        }
+
+        .instructions ol {
+            margin: 0;
+            padding-left: 24px;
+            color: #5D4037;
+        }
+
+        @media (max-width: 600px) {
+            .instructions ol {
+                padding-left: 20px;
+            }
+        }
+
+        .instructions li {
+            margin-bottom: 12px;
+            font-size: 1.05rem;
+            line-height: 1.6;
+            padding-left: 8px;
+        }
+
+        @media (max-width: 600px) {
+            .instructions li {
+                font-size: 0.95rem;
+                margin-bottom: 10px;
+                padding-left: 4px;
+            }
+        }
+
+        @keyframes fadeSlideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeSlideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes popIn {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="auth-nav" id="authNav">
+            <button class="btn-auth" id="authBtn" onclick="openAuthModal()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <span id="authBtnText">Sign In</span>
+            </button>
+        </div>
+        <div class="library-nav">
+            <button class="btn-library" id="libraryNavBtn" onclick="toggleLibrary()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                </svg>
+                <span id="libraryNavText">Alchemy Library</span>
+            </button>
+        </div>
+        <div class="logo-container">
+            <svg class="logo-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/>
+                <line x1="6" y1="17" x2="18" y2="17"/>
+            </svg>
+            <h1>Kitchen Alchemy</h1>
+        </div>
+        <p class="subtitle">Transform your ingredients into delicious possibilities</p>
+        <div class="ai-badge">✨ Powered by AI</div>
+    </div>
+
+    <div class="container">
+        <div class="input-card">
+            <h2>What's in your kitchen?</h2>
+
+            <div class="quick-select-section">
+                <h3>Quick Select:</h3>
+                <div class="quick-select-grid">
+                    <button class="quick-select-btn" onclick="quickAddIngredient('chicken')">🍗 Chicken</button>
+                    <button class="quick-select-btn" onclick="quickAddIngredient('beef')">🥩 Beef</button>
+                    <button class="quick-select-btn" onclick="quickAddIngredient('pork')">🥓 Pork</button>
+                    <button class="quick-select-btn" onclick="quickAddIngredient('fish')">🐟 Fish</button>
+                    <button class="quick-select-btn" onclick="quickAddIngredient('prawn')">🦐 Prawn</button>
+                    <button class="quick-select-btn" onclick="quickAddIngredient('eggs')">🥚 Eggs</button>
+                    <button class="quick-select-btn" onclick="quickAddIngredient('tofu')">🧈 Tofu</button>
+                    <button class="quick-select-btn" onclick="quickAddIngredient('rice')">🍚 Rice</button>
+                    <button class="quick-select-btn" onclick="quickAddIngredient('noodle')">🍜 Noodle</button>
+                    <button class="quick-select-btn" onclick="quickAddIngredient('pasta')">🍝 Pasta</button>
+                    <button class="quick-select-btn" onclick="quickAddIngredient('bread')">🍞 Bread</button>
+                    <button class="quick-select-btn" onclick="quickAddIngredient('potatoes')">🥔 Potatoes</button>
+                    <button class="quick-select-btn" onclick="quickAddIngredient('mushroom')">🍄 Mushroom</button>
+                    <button class="quick-select-btn" onclick="quickAddIngredient('carrot')">🥕 Carrot</button>
+                    <button class="quick-select-btn" onclick="quickAddIngredient('spinach')">🥬 Spinach</button>
+                    <button class="quick-select-btn" onclick="quickAddIngredient('onions')">🧅 Onions</button>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <input 
+                    type="text" 
+                    id="ingredientInput" 
+                    placeholder="Enter an ingredient..."
+                    autocomplete="off"
+                >
+                <button class="btn-add" onclick="addIngredient()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Add
+                </button>
+                <button class="btn-camera" id="cameraBtn" onclick="openCamera()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                        <circle cx="12" cy="13" r="4"></circle>
+                    </svg>
+                    Photo
+                </button>
+                <input 
+                    type="file" 
+                    id="cameraInput" 
+                    accept="image/*" 
+                    capture="environment"
+                    onchange="handlePhotoUpload(event)"
+                >
+            </div>
+
+            <div class="ingredients-container" id="ingredientsContainer"></div>
+
+            <div class="error-message" id="errorMessage"></div>
+
+            <button class="btn-find-recipes" id="findRecipesBtn" onclick="findRecipes()">
+                Find Recipes
+            </button>
+
+            <button class="btn-upgrade-home" id="upgradeHomeBtn" onclick="openUpgradeModal('home')" style="display: none; margin-top: 12px; width: 100%;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                    <path d="M2 17l10 5 10-5"></path>
+                    <path d="M2 12l10 5 10-5"></path>
+                </svg>
+                Upgrade to Premium - SGD 4.99/month
+            </button>
+        </div>
+
+        <div class="recipes-grid" id="recipesGrid"></div>
+
+        <!-- Recipe Carousel -->
+        <div class="recipe-carousel-container" id="recipeCarousel">
+            <div class="carousel-header">
+                <button class="btn-start-over" onclick="startOver()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="19" y1="12" x2="5" y2="12"></line>
+                        <polyline points="12 19 5 12 12 5"></polyline>
+                    </svg>
+                    Start Over
+                </button>
+                <div class="recipe-counter">
+                    <span id="currentRecipe">1</span> / <span id="totalRecipes">3</span>
+                </div>
+            </div>
+
+            <div class="carousel-wrapper">
+                <button class="carousel-nav prev" id="prevBtn" onclick="previousRecipe()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </button>
+                
+                <div class="carousel-track" id="carouselTrack"></div>
+                
+                <button class="carousel-nav next" id="nextBtn" onclick="nextRecipe()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="carousel-indicators" id="carouselIndicators"></div>
+        </div>
+
+        <!-- My Library View -->
+        <div class="library-container" id="libraryContainer">
+            <div class="library-header">
+                <h2>✨ Alchemy Library</h2>
+                <span class="library-count" id="libraryCount">0 recipes</span>
+            </div>
+            <div class="library-grid" id="libraryGrid">
+                <!-- Saved recipes will appear here -->
+            </div>
+            <div class="library-empty" id="libraryEmpty">
+                <div class="library-empty-icon">📖</div>
+                <h3>No saved recipes yet</h3>
+                <p>Generate recipes and save your favorites to build your personal collection!</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sign In Modal -->
+    <div class="modal" id="authModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeAuthModal()">×</button>
+            <div class="modal-header">
+                <h2>Welcome to Kitchen Alchemy!</h2>
+                <p>Sign in to save recipes and track your usage</p>
+            </div>
+            <button class="btn-google-signin" onclick="signInWithGoogle()">
+                <svg width="20" height="20" viewBox="0 0 48 48">
+                    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
+                    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
+                    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
+                    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
+                    <path fill="none" d="M0 0h48v48H0z"></path>
+                </svg>
+                Continue with Google
+            </button>
+            <p style="text-align: center; color: #999; font-size: 0.9rem;">
+                Free tier: 5 recipe generations per month
+            </p>
+        </div>
+    </div>
+
+    <!-- Upgrade Modal -->
+    <div class="modal" id="upgradeModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeUpgradeModal()">×</button>
+            <div class="modal-header">
+                <h2>Upgrade to Premium</h2>
+                <p>Unlock unlimited recipes and features!</p>
+            </div>
+            <div class="limit-warning" id="limitWarningText">
+                <p>You've reached your free tier limit</p>
+            </div>
+            <div style="text-align: center; margin: 30px 0;">
+                <div style="font-size: 3rem; font-weight: 700; color: #27ae60;">SGD 4.99</div>
+                <div style="font-size: 1.1rem; color: #8B4513;">per month</div>
+            </div>
+            <ul class="pricing-features">
+                <li>
+                    <span class="feature-check">✓</span>
+                    <span><strong>Unlimited</strong> recipe generations</span>
+                </li>
+                <li>
+                    <span class="feature-check">✓</span>
+                    <span><strong>Unlimited</strong> saved recipes</span>
+                </li>
+                <li>
+                    <span class="feature-check">✓</span>
+                    <span><strong>Unlimited</strong> photo uploads</span>
+                </li>
+                <li>
+                    <span class="feature-check">✓</span>
+                    <span>Cancel anytime, no commitment</span>
+                </li>
+            </ul>
+            <button class="btn-upgrade" onclick="startCheckout()">
+                Upgrade Now
+            </button>
+            <p style="text-align: center; color: #999; font-size: 0.9rem; margin-top: 20px;">
+                <span onclick="closeUpgradeModal()" style="cursor: pointer; text-decoration: underline;">Maybe later</span>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDhXxe60kaFCJSQ3D2Zl5TNWmw3yyda1H0",
+            authDomain: "pone-kitchen-alchemy.firebaseapp.com",
+            projectId: "pone-kitchen-alchemy",
+            storageBucket: "pone-kitchen-alchemy.firebasestorage.app",
+            messagingSenderId: "955474172610",
+            appId: "1:955474172610:web:24821d308098c28d6cf95b"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // State variables
+        let ingredients = [];
+        let currentRecipeIndex = 0;
+        let allRecipes = [];
+        let touchStartX = 0;
+        let touchEndX = 0;
+        let currentUser = null;
+        let userDoc = null;
+
+        // Firebase Authentication
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                currentUser = user;
+                await loadUserData(user.uid);
+                updateAuthUI(true);
+            } else {
+                currentUser = null;
+                userDoc = null;
+                updateAuthUI(false);
+            }
+        });
+
+        async function loadUserData(userId) {
+            try {
+                const docRef = db.collection('users').doc(userId);
+                const doc = await docRef.get();
+                
+                if (doc.exists) {
+                    userDoc = doc.data();
+                } else {
+                    // Create new user document
+                    const now = new Date().toISOString();
+                    const periodStart = new Date();
+                    periodStart.setDate(1); // First day of current month
+                    const periodEnd = new Date(periodStart);
+                    periodEnd.setMonth(periodEnd.getMonth() + 1); // First day of next month
+                    
+                    userDoc = {
+                        email: currentUser.email,
+                        displayName: currentUser.displayName,
+                        photoURL: currentUser.photoURL,
+                        subscriptionStatus: 'free',
+                        creditsUsed: 0,
+                        recipesSaved: 0,
+                        periodStart: periodStart.toISOString(),
+                        periodEnd: periodEnd.toISOString(),
+                        createdAt: now,
+                    };
+                    
+                    await docRef.set(userDoc);
+                }
+                
+                // Check if period has reset (new month)
+                const periodEnd = new Date(userDoc.periodEnd);
+                const now = new Date();
+                if (now > periodEnd) {
+                    // Reset credits for new month
+                    const newPeriodStart = new Date();
+                    newPeriodStart.setDate(1);
+                    const newPeriodEnd = new Date(newPeriodStart);
+                    newPeriodEnd.setMonth(newPeriodEnd.getMonth() + 1);
+                    
+                    userDoc.creditsUsed = 0;
+                    userDoc.periodStart = newPeriodStart.toISOString();
+                    userDoc.periodEnd = newPeriodEnd.toISOString();
+                    
+                    await docRef.update({
+                        creditsUsed: 0,
+                        periodStart: newPeriodStart.toISOString(),
+                        periodEnd: newPeriodEnd.toISOString(),
+                    });
+                }
+                
+                updateCreditsDisplay();
+            } catch (error) {
+                console.error('Error loading user data:', error);
+            }
+        }
+
+        function updateAuthUI(isSignedIn) {
+            const authBtn = document.getElementById('authBtn');
+            const upgradeHomeBtn = document.getElementById('upgradeHomeBtn');
+            
+            // Always hide the separate upgrade button
+            if (upgradeHomeBtn) upgradeHomeBtn.style.display = 'none';
+            
+            if (isSignedIn && currentUser) {
+                authBtn.onclick = toggleUserMenu;
+                
+                if (userDoc && userDoc.subscriptionStatus === 'premium') {
+                    authBtn.classList.add('premium');
+                    authBtn.innerHTML = `
+                        <span class="premium-badge">✨ Premium</span>
+                    `;
+                } else {
+                    authBtn.classList.remove('premium');
+                    authBtn.innerHTML = `
+                        <div class="credits-info">
+                            ${currentUser.photoURL ? `<img src="${currentUser.photoURL}" class="user-avatar" alt="Profile">` : ''}
+                            <span id="creditsDisplay">5 credits left</span>
+                            <span class="credits-divider">|</span>
+                            <a class="upgrade-link" onclick="event.stopPropagation(); openUpgradeModal('inline');">Upgrade</a>
+                        </div>
+                    `;
+                }
+            } else {
+                authBtn.classList.remove('premium');
+                authBtn.onclick = openAuthModal;
+                authBtn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    <span>Sign In</span>
+                `;
+            }
+        }
+
+        function updateCreditsDisplay() {
+            if (!userDoc) return;
+            
+            if (userDoc.subscriptionStatus === 'premium') {
+                return; // Premium users don't see credits
+            }
+            
+            const creditsRemaining = Math.max(0, 5 - userDoc.creditsUsed);
+            const creditsDisplay = document.getElementById('creditsDisplay');
+            if (creditsDisplay) {
+                const plural = creditsRemaining === 1 ? 'credit' : 'credits';
+                creditsDisplay.textContent = `${creditsRemaining} ${plural} left`;
+            }
+        }
+
+        let userMenuOpen = false;
+
+        function toggleUserMenu() {
+            const menu = document.getElementById('userMenu');
+            if (!menu) {
+                // Create user menu if it doesn't exist
+                createUserMenu();
+            }
+            
+            userMenuOpen = !userMenuOpen;
+            const userMenu = document.getElementById('userMenu');
+            if (userMenuOpen) {
+                userMenu.classList.add('active');
+            } else {
+                userMenu.classList.remove('active');
+            }
+        }
+
+        function createUserMenu() {
+            const authNav = document.getElementById('authNav');
+            const menu = document.createElement('div');
+            menu.id = 'userMenu';
+            menu.className = 'user-menu';
+            
+            let menuHTML = '';
+            
+            if (userDoc && userDoc.subscriptionStatus !== 'premium') {
+                menuHTML += `
+                    <div class="user-menu-item" onclick="openUpgradeModal('menu'); toggleUserMenu();">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                            <path d="M2 17l10 5 10-5"></path>
+                            <path d="M2 12l10 5 10-5"></path>
+                        </svg>
+                        Upgrade to Premium
+                    </div>
+                    <div class="user-menu-divider"></div>
+                `;
+            }
+            
+            menuHTML += `
+                <div class="user-menu-item" onclick="signOut(); toggleUserMenu();">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                    Sign Out
+                </div>
+            `;
+            
+            menu.innerHTML = menuHTML;
+            authNav.appendChild(menu);
+        }
+
+        // Close user menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const authNav = document.getElementById('authNav');
+            const userMenu = document.getElementById('userMenu');
+            
+            if (userMenuOpen && userMenu && !authNav.contains(event.target)) {
+                userMenuOpen = false;
+                userMenu.classList.remove('active');
+            }
+        });
+
+
+        async function signInWithGoogle() {
+            try {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                await auth.signInWithPopup(provider);
+                closeAuthModal();
+            } catch (error) {
+                console.error('Sign in error:', error);
+                alert('Failed to sign in. Please try again.');
+            }
+        }
+
+        async function signOut() {
+            try {
+                await auth.signOut();
+                // Clear local storage
+                localStorage.removeItem('savedRecipes');
+            } catch (error) {
+                console.error('Sign out error:', error);
+            }
+        }
+
+        function openAuthModal() {
+            document.getElementById('authModal').classList.add('active');
+        }
+
+        function closeAuthModal() {
+            document.getElementById('authModal').classList.remove('active');
+        }
+
+        function openUpgradeModal(reason) {
+            const warningText = document.getElementById('limitWarningText');
+            if (reason === 'credits') {
+                warningText.querySelector('p').textContent = "You've used all 5 free recipe generations this month";
+                warningText.style.display = 'block';
+            } else if (reason === 'saves') {
+                warningText.querySelector('p').textContent = "You've reached the limit of 5 saved recipes";
+                warningText.style.display = 'block';
+            } else if (reason === 'home' || reason === 'menu') {
+                // User clicked upgrade button proactively
+                warningText.style.display = 'none';
+            } else {
+                warningText.style.display = 'block';
+            }
+            document.getElementById('upgradeModal').classList.add('active');
+        }
+
+        function closeUpgradeModal() {
+            document.getElementById('upgradeModal').classList.remove('active');
+        }
+
+        // Close modals on escape key or click outside
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeAuthModal();
+                closeUpgradeModal();
+            }
+        });
+
+        document.addEventListener('click', function(event) {
+            const authModal = document.getElementById('authModal');
+            const upgradeModal = document.getElementById('upgradeModal');
+            
+            if (authModal && authModal.classList.contains('active') && event.target === authModal) {
+                closeAuthModal();
+            }
+            
+            if (upgradeModal && upgradeModal.classList.contains('active') && event.target === upgradeModal) {
+                closeUpgradeModal();
+            }
+        });
+
+
+        async function startCheckout() {
+            if (!currentUser) {
+                closeUpgradeModal();
+                openAuthModal();
+                return;
+            }
+            
+            try {
+                // Call Netlify function to create Stripe checkout session
+                const response = await fetch('/.netlify/functions/create-checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: currentUser.uid,
+                        userEmail: currentUser.email,
+                    }),
+                });
+                
+                const data = await response.json();
+                
+                if (data.url) {
+                    // Redirect to Stripe Checkout
+                    window.location.href = data.url;
+                } else {
+                    throw new Error('Failed to create checkout session');
+                }
+            } catch (error) {
+                console.error('Checkout error:', error);
+                alert('Failed to start checkout. Please try again.');
+            }
+        }
+
+        // Check for successful payment on page load
+        window.addEventListener('load', async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const sessionId = urlParams.get('session_id');
+            
+            if (sessionId && currentUser) {
+                // Payment successful! Update user to premium
+                try {
+                    await db.collection('users').doc(currentUser.uid).update({
+                        subscriptionStatus: 'premium',
+                        stripeSessionId: sessionId,
+                    });
+                    
+                    // Reload user data
+                    await loadUserData(currentUser.uid);
+                    
+                    // Show success message
+                    alert('🎉 Welcome to Premium! You now have unlimited access.');
+                    
+                    // Clean URL
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                } catch (error) {
+                    console.error('Error updating subscription:', error);
+                }
+            }
+        });
+
+        // Usage Limit Checks
+        async function canGenerateRecipe() {
+            if (!currentUser) {
+                openAuthModal();
+                return false;
+            }
+            
+            if (userDoc.subscriptionStatus === 'premium') {
+                return true; // Unlimited for premium users
+            }
+            
+            if (userDoc.creditsUsed >= 5) {
+                openUpgradeModal('credits');
+                return false;
+            }
+            
+            return true;
+        }
+
+        async function incrementCredits() {
+            if (!currentUser || !userDoc) return;
+            
+            if (userDoc.subscriptionStatus === 'premium') {
+                return; // No tracking for premium users
+            }
+            
+            userDoc.creditsUsed += 1;
+            
+            try {
+                await db.collection('users').doc(currentUser.uid).update({
+                    creditsUsed: userDoc.creditsUsed,
+                });
+                
+                updateCreditsDisplay();
+            } catch (error) {
+                console.error('Error updating credits:', error);
+            }
+        }
+
+        async function canSaveRecipe() {
+            if (!currentUser) {
+                openAuthModal();
+                return false;
+            }
+            
+            if (userDoc.subscriptionStatus === 'premium') {
+                return true; // Unlimited for premium users
+            }
+            
+            // Count saved recipes from localStorage
+            const savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+            
+            if (savedRecipes.length >= 5) {
+                openUpgradeModal('saves');
+                return false;
+            }
+            
+            return true;
+        }
+
+        // Camera functions
+        function openCamera() {
+            document.getElementById('cameraInput').click();
+        }
+
+        async function handlePhotoUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const cameraBtn = document.getElementById('cameraBtn');
+            const originalText = cameraBtn.innerHTML;
+
+            try {
+                // Show analyzing state
+                cameraBtn.disabled = true;
+                cameraBtn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                    </svg>
+                    Analyzing...
+                `;
+
+                // Convert image to base64
+                const base64Image = await fileToBase64(file);
+
+                // Send to backend for analysis
+                const response = await fetch('/.netlify/functions/detect-ingredients', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: base64Image }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to analyze image');
+                }
+
+                const data = await response.json();
+                
+                if (data.ingredients && data.ingredients.length > 0) {
+                    // Show "Adding ingredients..." transition
+                    cameraBtn.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        Adding...
+                    `;
+                    
+                    // Auto-add all detected ingredients
+                    data.ingredients.forEach(ingredient => {
+                        const cleaned = ingredient.trim().toLowerCase();
+                        if (cleaned && !ingredients.includes(cleaned)) {
+                            ingredients.push(cleaned);
+                        }
+                    });
+                    
+                    // Small delay for better UX (shows "Adding..." state)
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    renderIngredients();
+                    updateFindButton();
+                    updateQuickSelectButtons();
+                    hideError();
+                    
+                    // Show success state briefly
+                    cameraBtn.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        Added!
+                    `;
+                    
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                } else {
+                    showError('No ingredients detected. Please try a clearer photo.');
+                }
+            } catch (err) {
+                console.error('Error analyzing photo:', err);
+                showError('Failed to analyze photo. Please try again.');
+            } finally {
+                cameraBtn.disabled = false;
+                cameraBtn.innerHTML = originalText;
+                // Reset file input
+                event.target.value = '';
+            }
+        }
+
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => {
+                    // Remove the data:image/jpeg;base64, prefix
+                    const base64 = reader.result.split(',')[1];
+                    resolve(base64);
+                };
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        // Add ingredient on Enter key
+        document.getElementById('ingredientInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addIngredient();
+            }
+        });
+
+        // Keyboard navigation for carousel
+        document.addEventListener('keydown', function(e) {
+            const carouselActive = document.getElementById('recipeCarousel').classList.contains('active');
+            if (carouselActive) {
+                if (e.key === 'ArrowLeft') {
+                    previousRecipe();
+                } else if (e.key === 'ArrowRight') {
+                    nextRecipe();
+                }
+            }
+        });
+
+        // Touch swipe support for mobile - will be added after carousel is shown
+        function initTouchSupport() {
+            const carouselWrapper = document.querySelector('.carousel-wrapper');
+            if (carouselWrapper && !carouselWrapper.dataset.touchEnabled) {
+                carouselWrapper.dataset.touchEnabled = 'true';
+                
+                carouselWrapper.addEventListener('touchstart', e => {
+                    touchStartX = e.changedTouches[0].screenX;
+                });
+
+                carouselWrapper.addEventListener('touchend', e => {
+                    touchEndX = e.changedTouches[0].screenX;
+                    handleSwipe();
+                });
+            }
+        }
+
+        function handleSwipe() {
+            const swipeThreshold = 50;
+            const diff = touchStartX - touchEndX;
+
+            if (Math.abs(diff) > swipeThreshold) {
+                if (diff > 0) {
+                    // Swiped left - next recipe
+                    nextRecipe();
+                } else {
+                    // Swiped right - previous recipe
+                    previousRecipe();
+                }
+            }
+        }
+
+        function addIngredient() {
+            const input = document.getElementById('ingredientInput');
+            const trimmed = input.value.trim().toLowerCase();
+            
+            if (trimmed && !ingredients.includes(trimmed)) {
+                ingredients.push(trimmed);
+                input.value = '';
+                hideError();
+                renderIngredients();
+                updateFindButton();
+            }
+        }
+
+        function quickAddIngredient(ingredient) {
+            const lowerIngredient = ingredient.toLowerCase();
+            
+            // Toggle: if already in list, remove it; otherwise add it
+            const index = ingredients.indexOf(lowerIngredient);
+            if (index > -1) {
+                // Remove ingredient
+                ingredients.splice(index, 1);
+            } else {
+                // Add ingredient
+                ingredients.push(lowerIngredient);
+            }
+            
+            hideError();
+            renderIngredients();
+            updateFindButton();
+            updateQuickSelectButtons();
+        }
+
+        function updateQuickSelectButtons() {
+            const buttons = document.querySelectorAll('.quick-select-btn');
+            buttons.forEach(btn => {
+                const ingredient = btn.onclick.toString().match(/'([^']+)'/)[1];
+                if (ingredients.includes(ingredient)) {
+                    btn.classList.add('added');
+                } else {
+                    btn.classList.remove('added');
+                }
+            });
+        }
+
+        function removeIngredient(ingredient) {
+            ingredients = ingredients.filter(i => i !== ingredient);
+            renderIngredients();
+            updateFindButton();
+            updateQuickSelectButtons();
+        }
+
+        function renderIngredients() {
+            const container = document.getElementById('ingredientsContainer');
+            container.innerHTML = '';
+            
+            ingredients.forEach((ingredient, index) => {
+                const tag = document.createElement('div');
+                tag.className = 'ingredient-tag';
+                tag.style.animationDelay = `${index * 0.05}s`;
+                tag.onclick = () => removeIngredient(ingredient);
+                tag.title = 'Click to remove';
+                tag.innerHTML = `
+                    <span>${ingredient}</span>
+                    <button class="btn-remove" onclick="event.stopPropagation(); removeIngredient('${ingredient.replace(/'/g, "\\'")}')">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                `;
+                container.appendChild(tag);
+            });
+            updateQuickSelectButtons();
+        }
+
+        function updateFindButton() {
+            const btn = document.getElementById('findRecipesBtn');
+            btn.disabled = ingredients.length < 2;
+        }
+
+        function showError(message) {
+            const errorEl = document.getElementById('errorMessage');
+            errorEl.textContent = message;
+            errorEl.classList.add('show');
+        }
+
+        function hideError() {
+            const errorEl = document.getElementById('errorMessage');
+            errorEl.classList.remove('show');
+        }
+
+        async function findRecipes() {
+            if (ingredients.length < 2) {
+                showError('Please add at least 2 ingredients to get recipe ideas');
+                return;
+            }
+
+            // Check usage limits
+            if (!await canGenerateRecipe()) {
+                return; // Modal will be shown by canGenerateRecipe()
+            }
+
+            const btn = document.getElementById('findRecipesBtn');
+            const originalText = btn.textContent;
+            btn.textContent = '🧪 AI is cooking up ideas...';
+            btn.disabled = true;
+            hideError();
+
+            try {
+                // Call our Netlify serverless function
+                const response = await fetch('/.netlify/functions/generate-recipes', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ ingredients }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `Request failed with status ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                if (!data.recipes || !Array.isArray(data.recipes) || data.recipes.length === 0) {
+                    throw new Error('No recipes received from AI');
+                }
+                
+                // Increment usage credits after successful generation
+                await incrementCredits();
+                
+                renderRecipes(data.recipes);
+            } catch (err) {
+                console.error('Error generating recipes:', err);
+                showError(`Failed to generate recipes: ${err.message}. Please try again.`);
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = ingredients.length < 2;
+            }
+        }
+
+        function renderRecipes(recipes) {
+            allRecipes = recipes;
+            currentRecipeIndex = 0;
+
+            // Hide input card and header, show carousel
+            document.querySelector('.input-card').style.display = 'none';
+            document.querySelector('.header').classList.add('hidden');
+            document.getElementById('recipeCarousel').classList.add('active');
+
+            // Set total recipes counter
+            document.getElementById('totalRecipes').textContent = recipes.length;
+
+            // Build carousel
+            const track = document.getElementById('carouselTrack');
+            track.innerHTML = '';
+
+            recipes.forEach((recipe, index) => {
+                const slide = document.createElement('div');
+                slide.className = 'carousel-slide';
+
+                let additionalIngredientsHTML = '';
+                if (recipe.additionalIngredients && recipe.additionalIngredients.length > 0) {
+                    const items = recipe.additionalIngredients
+                        .map(item => `<span class="additional-item">${item}</span>`)
+                        .join('');
+                    additionalIngredientsHTML = `
+                        <div class="additional-ingredients">
+                            <h4>You'll also need:</h4>
+                            <div class="additional-items">${items}</div>
+                        </div>
+                    `;
+                }
+
+                const instructionsHTML = recipe.instructions
+                    .map(instruction => `<li>${instruction}</li>`)
+                    .join('');
+
+                // Map recipe types to appropriate curated food images
+                const recipeName = recipe.name.toLowerCase();
+                let imageUrl;
+                
+                // Detect dish type and assign appropriate image
+                if (recipeName.includes('rice') || recipeName.includes('fried rice')) {
+                    imageUrl = 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=800&h=600&fit=crop'; // Fried rice
+                } else if (recipeName.includes('noodle') || recipeName.includes('pasta') || recipeName.includes('spaghetti')) {
+                    imageUrl = 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=800&h=600&fit=crop'; // Noodles
+                } else if (recipeName.includes('chicken') && (recipeName.includes('grill') || recipeName.includes('roast'))) {
+                    imageUrl = 'https://images.unsplash.com/photo-1598103442097-8b74394b95c6?w=800&h=600&fit=crop'; // Grilled chicken
+                } else if (recipeName.includes('chicken')) {
+                    imageUrl = 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&h=600&fit=crop'; // Chicken dish
+                } else if (recipeName.includes('beef') || recipeName.includes('steak')) {
+                    imageUrl = 'https://images.unsplash.com/photo-1544025162-d76694265947?w=800&h=600&fit=crop'; // Beef/steak
+                } else if (recipeName.includes('fish') || recipeName.includes('salmon')) {
+                    imageUrl = 'https://images.unsplash.com/photo-1485921325833-c519f76c4927?w=800&h=600&fit=crop'; // Fish
+                } else if (recipeName.includes('prawn') || recipeName.includes('shrimp') || recipeName.includes('seafood')) {
+                    imageUrl = 'https://images.unsplash.com/photo-1559737558-2f5a37fc4d6f?w=800&h=600&fit=crop'; // Seafood
+                } else if (recipeName.includes('soup') || recipeName.includes('broth')) {
+                    imageUrl = 'https://images.unsplash.com/photo-1547592166-23ac45744acd?w=800&h=600&fit=crop'; // Soup
+                } else if (recipeName.includes('salad')) {
+                    imageUrl = 'https://images.unsplash.com/photo-1546793665-c74683f339c1?w=800&h=600&fit=crop'; // Salad
+                } else if (recipeName.includes('egg') || recipeName.includes('omelette') || recipeName.includes('scrambled')) {
+                    imageUrl = 'https://images.unsplash.com/photo-1525351484163-7529414344d8?w=800&h=600&fit=crop'; // Eggs
+                } else if (recipeName.includes('stir') && recipeName.includes('fry')) {
+                    imageUrl = 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=800&h=600&fit=crop'; // Stir fry
+                } else if (recipeName.includes('curry')) {
+                    imageUrl = 'https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?w=800&h=600&fit=crop'; // Curry
+                } else if (recipeName.includes('pork')) {
+                    imageUrl = 'https://images.unsplash.com/photo-1529042410759-befb1204b468?w=800&h=600&fit=crop'; // Pork
+                } else if (recipeName.includes('tofu') || recipeName.includes('vegetarian')) {
+                    imageUrl = 'https://images.unsplash.com/photo-1546069901-eacef0df6022?w=800&h=600&fit=crop'; // Tofu/vegetarian
+                } else {
+                    // Default general food image
+                    imageUrl = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop'; // Beautiful food plate
+                }
+
+                // Generate YouTube search URL
+                const videoSearch = recipe.videoSearch || recipe.name.toLowerCase().replace(/[^a-z0-9\s]/g, '');
+                const youtubeSearchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(videoSearch + ' recipe tutorial')}`;
+                const youtubeEmbedSearch = encodeURIComponent(videoSearch + ' recipe tutorial');
+
+                // Create unique recipe ID
+                recipe.id = recipe.id || Date.now() + '-' + index;
+
+                slide.innerHTML = `
+                    <div class="recipe-card">
+                        <h3>${recipe.name}</h3>
+                        <button class="btn-save-recipe" onclick="saveRecipe(${index})" id="save-btn-${index}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                            </svg>
+                            <span id="save-text-${index}">Save Recipe</span>
+                        </button>
+                        <div class="video-container" id="video-container-${index}">
+                            <div class="video-placeholder" id="video-placeholder-${index}" onclick="loadVideo(${index}, '${youtubeEmbedSearch.replace(/'/g, "\\'")}')">
+                                <div class="play-button">
+                                    <svg viewBox="0 0 24 24" fill="white">
+                                        <path d="M8 5v14l11-7z"/>
+                                    </svg>
+                                </div>
+                                <div class="video-label">Click to Watch Tutorial</div>
+                            </div>
+                            <iframe 
+                                id="video-iframe-${index}"
+                                class="video-iframe" 
+                                style="display: none;"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                allowfullscreen>
+                            </iframe>
+                        </div>
+                        <div class="recipe-meta">
+                            <div class="meta-item">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                </svg>
+                                <span><strong>${recipe.time}</strong> mins</span>
+                            </div>
+                            <div class="meta-item">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="9" cy="7" r="4"></circle>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                </svg>
+                                <span><strong>${recipe.servings}</strong> servings</span>
+                            </div>
+                        </div>
+                        ${additionalIngredientsHTML}
+                        <div class="instructions">
+                            <h4>Instructions:</h4>
+                            <ol>${instructionsHTML}</ol>
+                        </div>
+                    </div>
+                `;
+
+                track.appendChild(slide);
+                
+                // Prefetch thumbnail for this video
+                prefetchThumbnail(index, youtubeEmbedSearch);
+            });
+
+            // Build indicators
+            const indicators = document.getElementById('carouselIndicators');
+            indicators.innerHTML = '';
+            recipes.forEach((_, index) => {
+                const dot = document.createElement('div');
+                dot.className = 'indicator-dot';
+                if (index === 0) dot.classList.add('active');
+                dot.onclick = () => goToRecipe(index);
+                indicators.appendChild(dot);
+            });
+
+            // Initialize touch support for mobile
+            initTouchSupport();
+
+            updateCarousel();
+        }
+
+        async function prefetchThumbnail(index, searchTerm) {
+            try {
+                const response = await fetch('/.netlify/functions/get-youtube-video', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ searchTerm: decodeURIComponent(searchTerm) })
+                });
+                
+                const data = await response.json();
+                
+                if (data.thumbnailUrl) {
+                    const placeholder = document.getElementById(`video-placeholder-${index}`);
+                    if (placeholder) {
+                        placeholder.style.backgroundImage = `url('${data.thumbnailUrl}')`;
+                    }
+                }
+            } catch (error) {
+                console.error('Error prefetching thumbnail:', error);
+                // Silently fail - placeholder will just show default background
+            }
+        }
+
+        function updateCarousel() {
+            const track = document.getElementById('carouselTrack');
+            const offset = -currentRecipeIndex * 100;
+            track.style.transform = `translateX(${offset}%)`;
+
+            // Update counter
+            document.getElementById('currentRecipe').textContent = currentRecipeIndex + 1;
+
+            // Update indicators
+            document.querySelectorAll('.indicator-dot').forEach((dot, index) => {
+                dot.classList.toggle('active', index === currentRecipeIndex);
+            });
+
+            // Update navigation buttons
+            document.getElementById('prevBtn').disabled = currentRecipeIndex === 0;
+            document.getElementById('nextBtn').disabled = currentRecipeIndex === allRecipes.length - 1;
+        }
+
+        function nextRecipe() {
+            if (currentRecipeIndex < allRecipes.length - 1) {
+                currentRecipeIndex++;
+                updateCarousel();
+            }
+        }
+
+        function previousRecipe() {
+            if (currentRecipeIndex > 0) {
+                currentRecipeIndex--;
+                updateCarousel();
+            }
+        }
+
+        function goToRecipe(index) {
+            currentRecipeIndex = index;
+            updateCarousel();
+        }
+
+        function startOver() {
+            // Hide carousel and show input card and header
+            document.getElementById('recipeCarousel').classList.remove('active');
+            document.querySelector('.input-card').style.display = 'block';
+            document.querySelector('.header').classList.remove('hidden');
+            
+            // Reset state
+            currentRecipeIndex = 0;
+            allRecipes = [];
+            
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Library Management Functions
+        function toggleLibrary() {
+            const inputCard = document.querySelector('.input-card');
+            const carousel = document.getElementById('recipeCarousel');
+            const library = document.getElementById('libraryContainer');
+            const navBtn = document.getElementById('libraryNavBtn');
+            const navText = document.getElementById('libraryNavText');
+            
+            const isLibraryActive = library.classList.contains('active');
+            
+            if (isLibraryActive) {
+                // Switch to generate view
+                library.classList.remove('active');
+                inputCard.style.display = 'block';
+                document.querySelector('.header').classList.remove('hidden');
+                navText.textContent = 'Alchemy Library';
+            } else {
+                // Switch to library view
+                inputCard.style.display = 'none';
+                carousel.classList.remove('active');
+                library.classList.add('active');
+                document.querySelector('.header').classList.remove('hidden');
+                navText.textContent = 'Generate Recipes';
+                loadLibrary();
+            }
+            
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        async function saveRecipe(recipeIndex) {
+            const recipe = allRecipes[recipeIndex];
+            if (!recipe) return;
+            
+            // Get saved recipes from localStorage
+            let savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+            
+            // Check if already saved
+            const alreadySaved = savedRecipes.some(r => r.name === recipe.name);
+            
+            if (alreadySaved) {
+                // Already saved - show feedback
+                const btn = document.getElementById(`save-btn-${recipeIndex}`);
+                const text = document.getElementById(`save-text-${recipeIndex}`);
+                btn.classList.add('saved');
+                text.textContent = 'Already Saved!';
+                setTimeout(() => {
+                    text.textContent = 'Saved!';
+                }, 1500);
+                return;
+            }
+            
+            // Check save limits
+            if (!await canSaveRecipe()) {
+                return; // Modal will be shown by canSaveRecipe()
+            }
+            
+            // Add savedAt timestamp and unique ID
+            recipe.savedAt = new Date().toISOString();
+            recipe.id = recipe.id || Date.now() + '-' + recipeIndex;
+            
+            // Add to saved recipes
+            savedRecipes.push(recipe);
+            localStorage.setItem('savedRecipes', JSON.stringify(savedRecipes));
+            
+            // Update button
+            const btn = document.getElementById(`save-btn-${recipeIndex}`);
+            const text = document.getElementById(`save-text-${recipeIndex}`);
+            btn.classList.add('saved');
+            text.textContent = 'Saved!';
+        }
+
+        function loadLibrary() {
+            const savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+            const grid = document.getElementById('libraryGrid');
+            const empty = document.getElementById('libraryEmpty');
+            const count = document.getElementById('libraryCount');
+            
+            // Update count
+            count.textContent = `${savedRecipes.length} recipe${savedRecipes.length !== 1 ? 's' : ''}`;
+            
+            if (savedRecipes.length === 0) {
+                grid.style.display = 'none';
+                empty.style.display = 'block';
+                return;
+            }
+            
+            grid.style.display = 'grid';
+            empty.style.display = 'none';
+            grid.innerHTML = '';
+            
+            savedRecipes.reverse().forEach((recipe, index) => {
+                const card = document.createElement('div');
+                card.className = 'library-recipe-card';
+                card.style.animationDelay = `${index * 0.05}s`;
+                
+                // Build additional ingredients HTML
+                let additionalIngredientsHTML = '';
+                if (recipe.additionalIngredients && recipe.additionalIngredients.length > 0) {
+                    const items = recipe.additionalIngredients
+                        .map(item => `<span class="additional-item">${item}</span>`)
+                        .join('');
+                    additionalIngredientsHTML = `
+                        <div class="additional-ingredients">
+                            <h4>You'll also need:</h4>
+                            <div class="additional-items">${items}</div>
+                        </div>
+                    `;
+                }
+                
+                // Build instructions HTML
+                const instructionsHTML = recipe.instructions
+                    .map(instruction => `<li>${instruction}</li>`)
+                    .join('');
+                
+                // Generate YouTube search
+                const videoSearch = recipe.videoSearch || recipe.name.toLowerCase().replace(/[^a-z0-9\s]/g, '');
+                const youtubeEmbedSearch = encodeURIComponent(videoSearch + ' recipe tutorial');
+                
+                card.innerHTML = `
+                    <div class="library-recipe-header" onclick="toggleLibraryRecipe(this)">
+                        <h3 class="library-recipe-title">${recipe.name}</h3>
+                        <button class="library-recipe-remove" onclick="event.stopPropagation(); removeRecipe('${recipe.id}');" title="Remove recipe">
+                            ×
+                        </button>
+                    </div>
+                    <div class="library-recipe-content">
+                        <div class="library-recipe-details">
+                            <div class="library-recipe-meta">
+                                <div class="meta-item">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <polyline points="12 6 12 12 16 14"></polyline>
+                                    </svg>
+                                    <span><strong>${recipe.time}</strong> mins</span>
+                                </div>
+                                <div class="meta-item">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="9" cy="7" r="4"></circle>
+                                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                    </svg>
+                                    <span><strong>${recipe.servings}</strong> servings</span>
+                                </div>
+                            </div>
+                            
+                            <div class="video-container" id="lib-video-container-${index}">
+                                <div class="video-placeholder" id="lib-video-placeholder-${index}" onclick="event.stopPropagation(); loadLibraryVideo(${index}, '${youtubeEmbedSearch.replace(/'/g, "\\'")}')">
+                                    <div class="play-button">
+                                        <svg viewBox="0 0 24 24" fill="white">
+                                            <path d="M8 5v14l11-7z"/>
+                                        </svg>
+                                    </div>
+                                    <div class="video-label">Click to Watch Tutorial</div>
+                                </div>
+                                <iframe 
+                                    id="lib-video-iframe-${index}"
+                                    class="video-iframe" 
+                                    style="display: none;"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                    allowfullscreen>
+                                </iframe>
+                            </div>
+                            
+                            ${additionalIngredientsHTML}
+                            
+                            <div class="library-recipe-instructions">
+                                <h4>Instructions:</h4>
+                                <ol>${instructionsHTML}</ol>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                grid.appendChild(card);
+                
+                // Prefetch thumbnail for this library video
+                prefetchLibraryThumbnail(index, youtubeEmbedSearch);
+            });
+        }
+
+        async function prefetchLibraryThumbnail(index, searchTerm) {
+            try {
+                const response = await fetch('/.netlify/functions/get-youtube-video', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ searchTerm: decodeURIComponent(searchTerm) })
+                });
+                
+                const data = await response.json();
+                
+                if (data.thumbnailUrl) {
+                    const placeholder = document.getElementById(`lib-video-placeholder-${index}`);
+                    if (placeholder) {
+                        placeholder.style.backgroundImage = `url('${data.thumbnailUrl}')`;
+                    }
+                }
+            } catch (error) {
+                console.error('Error prefetching library thumbnail:', error);
+                // Silently fail - placeholder will just show default background
+            }
+        }
+
+        function toggleLibraryRecipe(headerElement) {
+            const card = headerElement.closest('.library-recipe-card');
+            card.classList.toggle('expanded');
+        }
+
+        function removeRecipe(recipeId) {
+            if (!confirm('Remove this recipe from your library?')) return;
+            
+            let savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+            savedRecipes = savedRecipes.filter(r => r.id !== recipeId);
+            localStorage.setItem('savedRecipes', JSON.stringify(savedRecipes));
+            
+            loadLibrary();
+        }
+
+        function loadLibraryVideo(index, searchTerm) {
+            const placeholder = document.getElementById(`lib-video-placeholder-${index}`);
+            const iframe = document.getElementById(`lib-video-iframe-${index}`);
+            
+            // Show loading state
+            placeholder.innerHTML = `
+                <div class="play-button">
+                    <div style="color: white;">Loading...</div>
+                </div>
+            `;
+            
+            // Fetch video ID from our backend
+            fetch('/.netlify/functions/get-youtube-video', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ searchTerm: decodeURIComponent(searchTerm) })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.videoId) {
+                    placeholder.classList.add('hidden');
+                    iframe.style.display = 'block';
+                    iframe.src = `https://www.youtube.com/embed/${data.videoId}?autoplay=1&rel=0`;
+                } else {
+                    window.open(`https://www.youtube.com/results?search_query=${searchTerm}`, '_blank');
+                    placeholder.innerHTML = `
+                        <div class="play-button">
+                            <svg viewBox="0 0 24 24" fill="white">
+                                <path d="M8 5v14l11-7z"/>
+                            </svg>
+                        </div>
+                        <div class="video-label">Opened in new tab</div>
+                    `;
+                }
+            })
+            .catch(err => {
+                console.error('Error loading video:', err);
+                window.open(`https://www.youtube.com/results?search_query=${searchTerm}`, '_blank');
+                placeholder.innerHTML = `
+                    <div class="play-button">
+                        <svg viewBox="0 0 24 24" fill="white">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
+                    </div>
+                    <div class="video-label">Opened in new tab</div>
+                `;
+            });
+        }
+
+        function loadVideo(index, searchTerm) {
+            const placeholder = document.getElementById(`video-placeholder-${index}`);
+            const iframe = document.getElementById(`video-iframe-${index}`);
+            
+            // Show loading state
+            placeholder.innerHTML = `
+                <div class="play-button">
+                    <div style="color: white;">Loading...</div>
+                </div>
+            `;
+            
+            // Fetch video ID from our backend
+            fetch('/.netlify/functions/get-youtube-video', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ searchTerm: decodeURIComponent(searchTerm) })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.videoId) {
+                    // Hide placeholder
+                    placeholder.classList.add('hidden');
+                    
+                    // Show and load iframe with specific video
+                    iframe.style.display = 'block';
+                    iframe.src = `https://www.youtube.com/embed/${data.videoId}?autoplay=1&rel=0`;
+                } else {
+                    // Fallback: open YouTube search in new tab
+                    window.open(`https://www.youtube.com/results?search_query=${searchTerm}`, '_blank');
+                    placeholder.innerHTML = `
+                        <div class="play-button">
+                            <svg viewBox="0 0 24 24" fill="white">
+                                <path d="M8 5v14l11-7z"/>
+                            </svg>
+                        </div>
+                        <div class="video-label">Opened in new tab</div>
+                    `;
+                }
+            })
+            .catch(err => {
+                console.error('Error loading video:', err);
+                // Fallback: open YouTube search
+                window.open(`https://www.youtube.com/results?search_query=${searchTerm}`, '_blank');
+                placeholder.innerHTML = `
+                    <div class="play-button">
+                        <svg viewBox="0 0 24 24" fill="white">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
+                    </div>
+                    <div class="video-label">Opened in new tab</div>
+                `;
+            });
+        }
+
+        // Initialize
+        updateFindButton();
+    </script>
+</body>
+</html>
