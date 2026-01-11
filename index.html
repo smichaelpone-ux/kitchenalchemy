@@ -2245,7 +2245,7 @@
             closeUpgradeModal();
             
             // LEMON SQUEEZY: Open embedded checkout overlay
-            const checkoutUrl = 'https://kitchenalchemy.lemonsqueezy.com/checkout/buy/3994a1b0-f7ca-4ce4-922b-aa4ace9438f1?embed=1&media=0&desc=0&discount=0';
+            const checkoutUrl = 'https://kitchenalchemy.lemonsqueezy.com/checkout/buy/3994a1b0-f7ca-4ce4-922b-aa4ace9438f1?embed=1&media=0&desc=0&discount=0&checkout[billing_address][country]=SG';
             
             // Add user email as parameter to pre-fill
             const urlWithEmail = `${checkoutUrl}&checkout[email]=${encodeURIComponent(currentUser.email)}`;
