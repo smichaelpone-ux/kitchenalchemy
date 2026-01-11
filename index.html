@@ -1968,12 +1968,48 @@
                 currentUser = user;
                 await loadUserData(user.uid);
                 updateAuthUI(true);
+                
+                // Check for successful payment after auth
+                await checkPaymentSuccess();
             } else {
                 currentUser = null;
                 userDoc = null;
                 updateAuthUI(false);
             }
         });
+
+        async function checkPaymentSuccess() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const sessionId = urlParams.get('session_id');
+            
+            if (sessionId && currentUser) {
+                console.log('Payment success detected! Session ID:', sessionId);
+                
+                try {
+                    // Update user to premium
+                    await db.collection('users').doc(currentUser.uid).update({
+                        subscriptionStatus: 'premium',
+                        stripeSessionId: sessionId,
+                        upgradedAt: new Date().toISOString(),
+                    });
+                    
+                    console.log('User upgraded to premium!');
+                    
+                    // Reload user data to get premium status
+                    await loadUserData(currentUser.uid);
+                    
+                    // Show success message
+                    alert('🎉 Welcome to Premium! You now have unlimited access to all features.');
+                    
+                    // Clean URL (remove session_id parameter)
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                    
+                } catch (error) {
+                    console.error('Error updating subscription:', error);
+                    alert('Payment successful but there was an error activating premium. Please contact support.');
+                }
+            }
+        }
 
         async function loadUserData(userId) {
             try {
@@ -2275,33 +2311,6 @@
                 alert(`Failed to start checkout: ${error.message}\n\nPlease check the browser console for details.`);
             }
         }
-
-        // Check for successful payment on page load
-        window.addEventListener('load', async () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const sessionId = urlParams.get('session_id');
-            
-            if (sessionId && currentUser) {
-                // Payment successful! Update user to premium
-                try {
-                    await db.collection('users').doc(currentUser.uid).update({
-                        subscriptionStatus: 'premium',
-                        stripeSessionId: sessionId,
-                    });
-                    
-                    // Reload user data
-                    await loadUserData(currentUser.uid);
-                    
-                    // Show success message
-                    alert('🎉 Welcome to Premium! You now have unlimited access.');
-                    
-                    // Clean URL
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                } catch (error) {
-                    console.error('Error updating subscription:', error);
-                }
-            }
-        });
 
         // Usage Limit Checks
         async function canGenerateRecipe() {
