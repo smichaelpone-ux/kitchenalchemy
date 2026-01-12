@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 
-// Initialize Firebase Admin if not already initialized
+// Initialize Firebase Admin with base64 encoded service account
 let admin;
 let db;
 
@@ -8,12 +8,19 @@ try {
   admin = require('firebase-admin');
   
   if (!admin.apps.length) {
+    // Decode base64 service account
+    const serviceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
+    
+    if (!serviceAccountBase64) {
+      throw new Error('FIREBASE_SERVICE_ACCOUNT_BASE64 not found');
+    }
+    
+    // Decode from base64
+    const serviceAccountJson = Buffer.from(serviceAccountBase64, 'base64').toString('utf8');
+    const serviceAccount = JSON.parse(serviceAccountJson);
+    
     admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-      }),
+      credential: admin.credential.cert(serviceAccount),
     });
   }
   
